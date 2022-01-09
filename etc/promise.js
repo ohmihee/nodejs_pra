@@ -7,7 +7,7 @@ const promise = new Promise((resolve,reject)=>{
         resolve('성공');
     } else {
         reject('실패');
-    }
+    } 
 });
 
 // 다른 코드가 들어갈 수 있음
