@@ -1,44 +1,55 @@
-const express = require('express');
-const { Comment } = require('../models');
+const Sequelize = require('sequelize');
 
-const router = express.Router();
-
-router.post('/', async (req, res, next) => {
-  try {
-    const comment = await Comment.create({
-      commenter: req.body.id,
-      comment: req.body.comment,
+module.exports = class User extends Sequelize.Model {
+  static init(sequelize) {
+    return super.init({
+      email: {
+        type: Sequelize.STRING(40),
+        allowNull: true,
+        unique: true,
+      },
+      nick: {
+        type: Sequelize.STRING(15),
+        allowNull: false,
+      },
+      password: {
+        type: Sequelize.STRING(100),
+        allowNull: true,
+      },
+      provider: {
+        type: Sequelize.STRING(10),
+        allowNull: false,
+        defaultValue: 'local',
+      },
+      snsId: {
+        type: Sequelize.STRING(30),
+        allowNull: true,
+      },
+    }, {
+      sequelize,
+      timestamps: true,
+      underscored: false,
+      modelName: 'User',
+      tableName: 'users',
+      paranoid: true,
+      charset: 'utf8',
+      collate: 'utf8_general_ci',
     });
-    console.log(comment);
-    res.status(201).json(comment);
-  } catch (err) {
-    console.error(err);
-    next(err);
   }
-});
 
-router.route('/:id')
-  .patch(async (req, res, next) => {
-    try {
-      const result = await Comment.update({
-        comment: req.body.comment,
-      }, {
-        where: { id: req.params.id },
-      });
-      res.json(result);
-    } catch (err) {
-      console.error(err);
-      next(err);
-    }
-  })
-  .delete(async (req, res, next) => {
-    try {
-      const result = await Comment.destroy({ where: { id: req.params.id } });
-      res.json(result);
-    } catch (err) {
-      console.error(err);
-      next(err);
-    }
-  });
+  static associate(db) {
+    db.User.hasMany(db.Post);
+    db.User.belongsToMany(db.User, {
+      foreignKey: 'followingId',
+      as: 'Followers',
+      through: 'Follow',
+    });
+    db.User.belongsToMany(db.User, {
+      foreignKey: 'followerId',
+      as: 'Followings',
+      through: 'Follow',
+    });
+  }
+};
 
-module.exports = router;
+
