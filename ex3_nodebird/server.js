@@ -9,10 +9,16 @@ const passport = require('passport');
 
 dotenv.config();
 
-const pageRouter = require('./routes/page')
+const pageRouter = require('./routes/page');
+const authRouter = require('./routes/auth');
+const postRouter = require('./routes/post');
+const userRouter = require('./routes/user');
+
+const { sequelize } = require('./models')
+const passportConfig = require('./passport')
 
 const app = express();
-passportConfig();
+passportConfig();  // 패스포트 설정
 
 app.set('port', process.env.PORT || 3000);
 app.set('view engine', 'html');
@@ -21,8 +27,18 @@ nunjucks.configure('views', {
   watch: true,
 });
 
+sequelize.sync({force:false})
+    .then(() => {
+        console.log('db success')
+    })
+    .catch((err) => {
+        console.error(err)
+    })
+
 app.use(morgan('dev'));
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/img',express.static(path.join(__dirname, 'uploads')));
+app.use(express.json());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser(process.env.COOKIE_SECRET));
@@ -37,9 +53,15 @@ app.use(session({
 }));
 
 app.use(passport.initialize());
+// 모든 요청에 passport 설정을 심음
 app.use(passport.session());
+// req.session 객체에 passport 정보를 저장.
+// req.session 객체는 express.session에서 생성하는 것이므로 passport 미들웨어는 express-session 미들웨어보다 뒤에 연결되어야 함
 
-app.use('/',pageRouter)
+app.use('/',pageRouter);
+app.use('/auth',authRouter);
+app.use('/post',postRouter);
+app.use('/user',userRouter);
 
 app.use((req,res,next) => {
    const error = new Error(`${req.method} ${req.url} 라우터가 없습니다.`);

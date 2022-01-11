@@ -1,55 +1,39 @@
-const Sequelize = require('sequelize');
+const express = require('express');
+const { v4: uuidv4 } = require('uuid');
+const { User, Domain } = require('../models');
+const { isLoggedIn } = require('./middlewares');
 
-module.exports = class User extends Sequelize.Model {
-  static init(sequelize) {
-    return super.init({
-      email: {
-        type: Sequelize.STRING(40),
-        allowNull: true,
-        unique: true,
-      },
-      nick: {
-        type: Sequelize.STRING(15),
-        allowNull: false,
-      },
-      password: {
-        type: Sequelize.STRING(100),
-        allowNull: true,
-      },
-      provider: {
-        type: Sequelize.STRING(10),
-        allowNull: false,
-        defaultValue: 'local',
-      },
-      snsId: {
-        type: Sequelize.STRING(30),
-        allowNull: true,
-      },
-    }, {
-      sequelize,
-      timestamps: true,
-      underscored: false,
-      modelName: 'User',
-      tableName: 'users',
-      paranoid: true,
-      charset: 'utf8',
-      collate: 'utf8_general_ci',
+const router = express.Router();
+
+router.get('/', async (req, res, next) => {
+  try {
+    const user = await User.findOne({
+      where: { id: req.user && req.user.id || null },
+      include: { model: Domain },
     });
+    res.render('login', {
+      user,
+      domains: user && user.Domains,
+    });
+  } catch (err) {
+    console.error(err);
+    next(err);
   }
+});
 
-  static associate(db) {
-    db.User.hasMany(db.Post);
-    db.User.belongsToMany(db.User, {
-      foreignKey: 'followingId',
-      as: 'Followers',
-      through: 'Follow',
+router.post('/domain', isLoggedIn, async (req, res, next) => {
+  try {
+    await Domain.create({
+      UserId: req.user.id,
+      host: req.body.host,
+      type: req.body.type,
+      clientSecret: uuidv4(),
     });
-    db.User.belongsToMany(db.User, {
-      foreignKey: 'followerId',
-      as: 'Followings',
-      through: 'Follow',
-    });
+    res.redirect('/');
+  } catch (err) {
+    console.error(err);
+    next(err);
   }
-};
+});
 
-
+module.exports = router;
